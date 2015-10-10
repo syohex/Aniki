@@ -1,7 +1,7 @@
 use 5.014002;
 package Aniki::Schema::Relationship::Fetcher {
     use namespace::sweep;
-    use Mouse v2.4.5;
+    use Moo 2.000000;
 
     has handler => (
         is       => 'ro',

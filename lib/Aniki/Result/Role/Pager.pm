@@ -1,11 +1,9 @@
 package Aniki::Result::Role::Pager;
 use namespace::sweep;
-use Mouse::Role;
-use Mouse::Util::TypeConstraints qw/duck_type/;
+use Moo::Role;
 
 has pager => (
     is  => 'rw',
-    isa => duck_type(qw/entries_per_page current_page entries_on_this_page/),
 );
 
 1;

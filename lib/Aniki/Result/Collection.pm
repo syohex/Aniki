@@ -1,6 +1,6 @@
 package Aniki::Result::Collection {
     use namespace::sweep;
-    use Mouse v2.4.5;
+    use Moo 2.000000;
     extends qw/Aniki::Result/;
 
     use overload
@@ -71,7 +71,7 @@ This is result class of C<SELECT> query.
 You can use original result class:
 
     package MyApp::DB;
-    use Mouse;
+    use Moo;
     extends qw/Aniki/;
 
     __PACKAGE__->setup(

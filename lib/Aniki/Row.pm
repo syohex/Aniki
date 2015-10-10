@@ -1,6 +1,6 @@
 package Aniki::Row {
     use namespace::sweep;
-    use Mouse v2.4.5;
+    use Moo 2.000000;
     use Carp qw/croak/;
     use Hash::Util qw/fieldhash/;
     use Scalar::Util qw/weaken/;
@@ -32,15 +32,12 @@ package Aniki::Row {
 
     fieldhash my %handler;
 
-    around new => sub {
-        my $orig = shift;
-        my ($class, %args) = @_;
-        my $handler = delete $args{handler};
-        my $self = $class->$orig(%args);
+    sub BUILD {
+        my ($self, $args) = @_;
+        my $handler = delete $args->{handler};
         weaken $handler;
         $handler{$self} = $handler;
-        return $self;
-    };
+    }
 
     sub handler { $handler{+shift} }
     sub schema  { shift->handler->schema }

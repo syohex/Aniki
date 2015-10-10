@@ -1,6 +1,6 @@
 package Aniki::Result::Collection::Joined {
     use namespace::sweep;
-    use Mouse v2.4.5;
+    use Moo 2.000000;
     extends qw/Aniki::Result::Collection/;
 
     use Carp qw/croak/;
@@ -12,12 +12,12 @@ package Aniki::Result::Collection::Joined {
     has '+table_name' => (
         required => 0,
         lazy     => 1,
-        default  => sub { join ',', @{ $_[0]->table_names } }
+        builder  => sub { join ',', @{ $_[0]->table_names } }
     );
 
     has '+row_class' => (
         lazy    => 1,
-        default => sub { croak 'Cannot get row class of '.__PACKAGE__.'. Use row_classes instead of row_class.' },
+        builder => sub { croak 'Cannot get row class of '.__PACKAGE__.'. Use row_classes instead of row_class.' },
     );
 
     has table_names => (
@@ -33,7 +33,8 @@ package Aniki::Result::Collection::Joined {
 
     has _subresult_cache => (
         is      => 'ro',
-        default => sub {
+        lazy    => 1,
+        builder => sub {
             my $self = shift;
             return +{
                 map { $_ => undef } @{ $self->table_names },

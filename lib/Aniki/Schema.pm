@@ -1,8 +1,9 @@
 use 5.014002;
 package Aniki::Schema {
     use namespace::sweep;
-    use Mouse v2.4.5;
+    use Moo 2.000000;
     use Aniki::Schema::Relationships;
+    use Aniki::Schema::Table;
     use SQL::Translator::Schema::Constants;
     use Carp qw/croak/;
 
@@ -13,7 +14,8 @@ package Aniki::Schema {
 
     has context => (
         is      => 'ro',
-        default => sub { shift->schema_class->context }
+        lazy    => 1,
+        builder => sub { shift->schema_class->context }
     );
 
     sub BUILD {

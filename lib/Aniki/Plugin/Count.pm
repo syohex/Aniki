@@ -2,7 +2,7 @@ use 5.014002;
 
 package Aniki::Plugin::Count {
     use namespace::sweep;
-    use Mouse::Role;
+    use Moo::Role;
 
     requires qw/query_builder dbh/;
 
@@ -33,7 +33,7 @@ Aniki::Plugin::Count - Count rows in database.
 =head1 SYNOPSIS
 
     package MyDB;
-    use Mouse v2.4.5;
+    use Moo 2.000000;
     extends qw/Aniki/;
     with qw/Aniki::Plugin::Count/;
 

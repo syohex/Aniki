@@ -1,7 +1,7 @@
 use 5.014002;
 package Aniki {
     use namespace::sweep;
-    use Mouse v2.4.5;
+    use Moo 2.000000;
     use Module::Load ();
     use Aniki::Row;
     use Aniki::Result::Collection;
@@ -18,10 +18,10 @@ package Aniki {
     use Scalar::Util qw/blessed/;
     use String::CamelCase qw/camelize/;
     use SQL::NamedPlaceholder qw/bind_named/;
+    use Package::Stash;
 
     has connect_info => (
         is       => 'ro',
-        isa      => 'ArrayRef',
         required => 1,
     );
 
@@ -79,13 +79,14 @@ package Aniki {
 
     sub setup {
         my ($class, %args) = @_;
+        my $meta = Package::Stash->new($class);
 
         # schema
         if (my $schema_class = $args{schema}) {
             Module::Load::load($schema_class);
 
             my $schema = Aniki::Schema->new(schema_class => $schema_class);
-            $class->meta->add_method(schema => sub { $schema });
+            $meta->add_symbol('&schema' => sub { $schema });
         }
         else {
             croak 'schema option is required.';
@@ -96,11 +97,11 @@ package Aniki {
             Module::Load::load($filter_class);
 
             my $filter = $filter_class->instance();
-            $class->meta->add_method(filter => sub { $filter });
+            $meta->add_symbol('&filter' => sub { $filter });
         }
         else {
             my $filter = Aniki::Filter->new;
-            $class->meta->add_method(filter => sub { $filter });
+            $meta->add_symbol('&filter' => sub { $filter });
         }
 
         # query_builder
@@ -112,7 +113,7 @@ package Aniki {
             }
             my $driver        = $class->_database2driver($class->schema->database);
             my $query_builder = $query_builder_class->new(driver => $driver, strict => $class->use_strict_query_builder);
-            $class->meta->add_method(query_builder => sub { $query_builder });
+            $meta->add_symbol('&query_builder' => sub { $query_builder });
         }
 
         # row
@@ -122,7 +123,7 @@ package Aniki {
                 Module::Load::load($args{row});
                 $row_class = $args{row};
             }
-            $class->meta->add_method(row_class => sub { $row_class });
+            $meta->add_symbol('&row_class' => sub { $row_class });
         }
 
         # result
@@ -132,7 +133,7 @@ package Aniki {
                 Module::Load::load($args{result});
                 $result_class = $args{result};
             }
-            $class->meta->add_method(result_class => sub { $result_class });
+            $meta->add_symbol('&result_class' => sub { $result_class });
         }
     }
 
@@ -614,7 +615,7 @@ Aniki - The ORM as our great brother.
     };
 
     package MyProj::DB {
-        use Mouse v2.4.5;
+        use Moo 2.000000;
         extends qw/Aniki/;
 
         __PACKAGE__->setup(

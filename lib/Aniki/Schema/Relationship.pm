@@ -1,7 +1,7 @@
 use 5.014002;
 package Aniki::Schema::Relationship {
     use namespace::sweep;
-    use Mouse v2.4.5;
+    use Moo 2.000000;
     use Hash::Util::FieldHash qw/fieldhash/;
     use Aniki::Schema::Relationship::Fetcher;
     use Lingua::EN::Inflect qw/PL/;
@@ -36,20 +36,23 @@ package Aniki::Schema::Relationship {
 
     has has_many => (
         is      => 'ro',
-        default => sub {
+        lazy    => 1,
+        builder => sub {
             my $self = shift;
             return $self->schema->has_many($self->dest_table_name, $self->dest_columns);
         },
     );
 
     has name => (
-        is       => 'ro',
-        default  => \&_guess_name,
+        is      => 'ro',
+        lazy    => 1,
+        builder => \&_guess_name,
     );
 
     has _fetcher => (
         is      => 'ro',
-        default => sub {
+        lazy    => 1,
+        builder => sub {
             fieldhash my %fetcher;
             return \%fetcher;
         },
