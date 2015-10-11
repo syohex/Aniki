@@ -1,42 +1,36 @@
 package Aniki::Result {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse v2.4.5;
+
     use Scalar::Util qw/weaken/;
-    use Hash::Util qw/fieldhash/;
 
-    has table_name => (
-        is       => 'ro',
-        required => 1,
+    use Class::XSAccessor (
+        getters   => [qw/table_name/],
+        accessors => [qw/suppress_row_objects row_class/]
     );
 
-    has suppress_row_objects => (
-        is      => 'rw',
-        lazy    => 1,
-        default => sub { shift->handler->suppress_row_objects },
-    );
+    my %handler;
 
-    has row_class => (
-        is      => 'rw',
-        lazy    => 1,
-        default => sub {
-            my $self = shift;
-            $self->handler->guess_row_class($self->table_name);
-        },
-    );
-
-    fieldhash my %handler;
-
-    around new => sub {
-        my $orig = shift;
+    sub new {
         my ($class, %args) = @_;
         my $handler = delete $args{handler};
-        my $self = $class->$orig(%args);
-        weaken $handler;
-        $handler{$self} = $handler;
+        my $self = bless {
+            suppress_row_objects => $handler->suppress_row_objects,
+            row_class            => $handler->guess_row_class($args{table_name}),
+            %args,
+        } => $class;
+        $handler{0+$self} = $handler;
         return $self;
-    };
+    }
 
-    sub handler { $handler{+shift} }
+    sub handler { $handler{0+$_[0]} }
+
+    sub DESTROY {
+        my $self = shift;
+        delete $handler{0+$self};
+    }
 };
 
 1;

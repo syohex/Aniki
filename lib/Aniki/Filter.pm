@@ -1,37 +1,21 @@
 use 5.014002;
 package Aniki::Filter {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse v2.4.5;
 
-    has global_inflators => (
-        is      => 'ro',
-        default => sub { [] },
-    );
-
-    has global_deflators => (
-        is      => 'ro',
-        default => sub { [] },
-    );
-
-    has global_triggers => (
-        is      => 'ro',
-        default => sub { +{} },
-    );
-
-    has table_inflators => (
-        is      => 'ro',
-        default => sub { +{} },
-    );
-
-    has table_deflators => (
-        is      => 'ro',
-        default => sub { +{} },
-    );
-
-    has table_triggers => (
-        is      => 'ro',
-        default => sub { +{} },
-    );
+    sub new {
+        my $class = shift;
+        return bless {
+            global_inflators => [],
+            global_deflators => [],
+            global_triggers  => +{},
+            table_inflators  => +{},
+            table_deflators  => +{},
+            table_triggers   => +{},
+        } => $class;
+    }
 
     sub _identity { $_[0] }
     sub _normalize_column2rx { ref $_[0] eq 'Regexp' ? $_[0] : qr/\A\Q$_[0]\E\z/m }
@@ -39,35 +23,35 @@ package Aniki::Filter {
     sub add_global_inflator {
         my ($self, $column, $code) = @_;
         my $rx = _normalize_column2rx($column);
-        push @{ $self->global_inflators } => [$rx, $code];
+        push @{ $self->{global_inflators} } => [$rx, $code];
     }
 
     sub add_global_deflator {
         my ($self, $column, $code) = @_;
         my $rx = _normalize_column2rx($column);
-        push @{ $self->global_deflators } => [$rx, $code];
+        push @{ $self->{global_deflators} } => [$rx, $code];
     }
 
     sub add_global_trigger {
         my ($self, $event, $code) = @_;
-        push @{ $self->global_triggers->{$event} } => $code;
+        push @{ $self->{global_triggers}->{$event} } => $code;
     }
 
     sub add_table_inflator {
         my ($self, $table_name, $column, $code) = @_;
         my $rx = _normalize_column2rx($column);
-        push @{ $self->table_inflators->{$table_name} } => [$rx, $code];
+        push @{ $self->{table_inflators}->{$table_name} } => [$rx, $code];
     }
 
     sub add_table_deflator {
         my ($self, $table_name, $column, $code) = @_;
         my $rx = _normalize_column2rx($column);
-        push @{ $self->table_deflators->{$table_name} } => [$rx, $code];
+        push @{ $self->{table_deflators}->{$table_name} } => [$rx, $code];
     }
 
     sub add_table_trigger {
         my ($self, $table_name, $event, $code) = @_;
-        push @{ $self->table_triggers->{$table_name}->{$event} } => $code;
+        push @{ $self->{table_triggers}->{$table_name}->{$event} } => $code;
     }
 
     sub inflate_column {
@@ -114,11 +98,11 @@ package Aniki::Filter {
         my ($self, $table_name, $column) = @_;
         unless (exists $self->{__inflate_callbacks_cache}->{$table_name}->{$column}) {
             my $callback;
-            for my $pair (@{ $self->global_inflators }) {
+            for my $pair (@{ $self->{global_inflators} }) {
                 my ($rx, $code) = @$pair;
                 $callback = $code if $column =~ $rx;
             }
-            for my $pair (@{ $self->table_inflators->{$table_name} }) {
+            for my $pair (@{ $self->{table_inflators}->{$table_name} }) {
                 my ($rx, $code) = @$pair;
                 $callback = $code if $column =~ $rx;
             }
@@ -131,11 +115,11 @@ package Aniki::Filter {
         my ($self, $table_name, $column) = @_;
         unless (exists $self->{__deflate_callbacks_cache}->{$table_name}->{$column}) {
             my $callback;
-            for my $pair (@{ $self->global_deflators }) {
+            for my $pair (@{ $self->{global_deflators} }) {
                 my ($rx, $code) = @$pair;
                 $callback = $code if $column =~ $rx;
             }
-            for my $pair (@{ $self->table_deflators->{$table_name} }) {
+            for my $pair (@{ $self->{table_deflators}->{$table_name} }) {
                 my ($rx, $code) = @$pair;
                 $callback = $code if $column =~ $rx;
             }
@@ -149,8 +133,8 @@ package Aniki::Filter {
 
         unless (exists $self->{__trigger_callback_cache}->{$table_name}->{$event}) {
             my @triggers = (
-                @{ $self->table_triggers->{$table_name}->{$event} || [] },
-                @{ $self->global_triggers->{$event} || [] },
+                @{ $self->{table_triggers}->{$table_name}->{$event} || [] },
+                @{ $self->{global_triggers}->{$event} || [] },
             );
 
             my $trigger = \&_identity;

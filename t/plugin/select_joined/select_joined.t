@@ -6,7 +6,7 @@ use Test::More;
 
 use File::Spec;
 use lib File::Spec->catfile('t', 'lib');
-use Mouse::Util;
+use Role::Tiny;
 use t::Util;
 
 if (!eval { require SQL::Maker::Plugin::JoinSelect; 1 }) {
@@ -14,7 +14,7 @@ if (!eval { require SQL::Maker::Plugin::JoinSelect; 1 }) {
 }
 
 my $db = t::Util->db;
-Mouse::Util::apply_all_roles($db, 'Aniki::Plugin::SelectJoined');
+Role::Tiny->apply_roles_to_object($db, 'Aniki::Plugin::SelectJoined');
 
 my $moznion_id = $db->insert_and_fetch_id(author => { name => 'MOZNION' });
 my @moznion_module_ids = (

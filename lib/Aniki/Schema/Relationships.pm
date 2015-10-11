@@ -1,25 +1,28 @@
 use 5.014002;
 package Aniki::Schema::Relationships {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse v2.4.5;
+
     use SQL::Translator::Schema::Constants;
     use Aniki::Schema::Relationship;
+    use Scalar::Util qw/weaken/;
 
-    has schema => (
-        is       => 'ro',
-        required => 1,
-        weak_ref => 1,
+    use Class::XSAccessor (
+        getters   => [qw/schema table/],
+        accessors => [qw/rule/],
     );
 
-    has table => (
-        is       => 'ro',
-        required => 1,
-    );
-
-    has rule => (
-        is      => 'rw',
-        default => sub { +{} },
-    );
+    sub new {
+        my $class = shift;
+        my $self = bless {
+            rule => {},
+            @_,
+        } => $class;
+        weaken $self->{schema};
+        return $self;
+    }
 
     sub add {
         my $self = shift;

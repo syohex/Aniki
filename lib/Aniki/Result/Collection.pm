@@ -1,37 +1,36 @@
 package Aniki::Result::Collection {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse v2.4.5;
-    extends qw/Aniki::Result/;
+
+    use parent qw/Aniki::Result/;
 
     use overload
         '@{}'    => sub { shift->rows },
         fallback => 1;
 
-    has row_datas => (
-        is       => 'ro',
-        required => 1,
+    use Class::XSAccessor (
+        getters => [qw/row_datas/],
     );
 
-    has inflated_rows => (
-        is      => 'ro',
-        lazy    => 1,
-        builder => '_inflate',
-    );
+    sub inflated_rows {  $_[0]->{inflated_rows} //= $_[0]->_inflate() }
 
     sub _inflate {
         my $self = shift;
+
         my $row_class  = $self->row_class;
         my $table_name = $self->table_name;
         my $handler    = $self->handler;
-        return [
-            map {
-                $row_class->new(
-                    table_name => $table_name,
-                    handler    => $handler,
-                    row_data   => $_
-                )
-            } @{ $self->row_datas }
-        ];
+
+        my @rows = map {
+            $row_class->new(
+                table_name => $table_name,
+                handler    => $handler,
+                row_data   => $_
+            )
+        } @{ $self->row_datas };
+        return \@rows;
     }
 
     sub rows {
@@ -71,8 +70,7 @@ This is result class of C<SELECT> query.
 You can use original result class:
 
     package MyApp::DB;
-    use Mouse;
-    extends qw/Aniki/;
+    use parent qw/Aniki/;
 
     __PACKAGE__->setup(
         schema => 'MyApp::DB::Schema',

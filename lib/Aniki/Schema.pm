@@ -1,28 +1,29 @@
 use 5.014002;
 package Aniki::Schema {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse v2.4.5;
+
     use Aniki::Schema::Relationships;
     use SQL::Translator::Schema::Constants;
     use Carp qw/croak/;
+    use Class::XSAccessor getters => [qw/schema_class context/];
 
-    has schema_class => (
-        is       => 'ro',
-        required => 1,
-    );
+    sub new {
+        my ($class, %args) = @_;
 
-    has context => (
-        is      => 'ro',
-        default => sub { shift->schema_class->context }
-    );
-
-    sub BUILD {
-        my $self = shift;
+        my $self = bless {
+            context => $args{schema_class}->context,
+            %args,
+        } => $class;
 
         # create cache
         for my $table ($self->context->schema->get_tables) {
             $self->get_relationships($table->name);
         }
+
+        return $self;
     }
 
     sub has_many {
@@ -130,6 +131,8 @@ package Aniki::Schema {
             croak qq{Can't locate object method "$method" via package "$class"};
         }
     }
+
+    sub DESTROY {} # no autoload
 }
 
 1;

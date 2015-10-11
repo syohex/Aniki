@@ -1,23 +1,23 @@
 use 5.014002;
 package Aniki::Schema::Relationship::Fetcher {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse v2.4.5;
 
-    has handler => (
-        is       => 'ro',
-        weak_ref => 1,
-        required => 1,
-    );
+    use Class::XSAccessor getters => [qw/handler relationship/];
 
-    has relationship => (
-        is       => 'ro',
-        weak_ref => 1,
-        required => 1,
-    );
-
+    use Scalar::Util qw/weaken/;
     use List::MoreUtils qw/pairwise notall/;
     use List::UtilsBy qw/partition_by/;
     use SQL::QueryMaker;
+
+    sub new {
+        my ($class, %args) = @_;
+        weaken $args{handler};
+        weaken $args{relationship};
+        return bless \%args => $class;
+    }
 
     sub execute {
         my ($self, $rows, $relay) = @_;

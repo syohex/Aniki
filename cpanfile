@@ -1,15 +1,14 @@
 requires 'B::Hooks::EndOfScope';
+requires 'Class::XSAccessor';
 requires 'DBIx::Handler';
 requires 'DBIx::Schema::DSL';
 requires 'Data::Page::NoTotalEntries';
-requires 'Hash::Util::FieldHash';
 requires 'Lingua::EN::Inflect';
 requires 'List::MoreUtils';
 requires 'List::UtilsBy';
 requires 'Module::Load';
-requires 'Mouse', 'v2.4.5';
-requires 'Mouse::Role';
-requires 'Mouse::Util::TypeConstraints';
+requires 'Package::Stash';
+requires 'Role::Tiny';
 requires 'SQL::Maker', '1.19';
 requires 'SQL::Maker::SQLType';
 requires 'SQL::NamedPlaceholder';
@@ -30,8 +29,17 @@ on configure => sub {
 
 on test => sub {
     requires 'DBD::SQLite';
-    requires 'Mouse::Util';
+    requires 'List::Util';
     requires 'Test::Builder::Module';
     requires 'Test::More', '0.98';
     requires 'feature';
+};
+
+on develop => sub {
+    requires 'DBI';
+    requires 'DBIx::Class::Core';
+    requires 'DBIx::Class::Schema';
+    requires 'Teng';
+    requires 'Teng::Schema::Declare';
+    requires 'Time::Moment';
 };

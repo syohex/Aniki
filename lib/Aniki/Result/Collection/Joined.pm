@@ -1,7 +1,10 @@
 package Aniki::Result::Collection::Joined {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse v2.4.5;
-    extends qw/Aniki::Result::Collection/;
+
+    use parent qw/Aniki::Result::Collection/;
 
     use Carp qw/croak/;
     use Aniki::Row::Joined;
@@ -9,37 +12,12 @@ package Aniki::Result::Collection::Joined {
     use List::UtilsBy qw/uniq_by/;
     use Scalar::Util qw/refaddr/;
 
-    has '+table_name' => (
-        required => 0,
-        lazy     => 1,
-        default  => sub { join ',', @{ $_[0]->table_names } }
-    );
+    use Class::XSAccessor getters => [qw/table_names/];
 
-    has '+row_class' => (
-        lazy    => 1,
-        default => sub { croak 'Cannot get row class of '.__PACKAGE__.'. Use row_classes instead of row_class.' },
-    );
+    sub table_name { join ',', @{ $_[0]->table_names } }
+    sub row_class  { croak 'Cannot get row class of '.__PACKAGE__.'. Use row_classes instead of row_class.' }
 
-    has table_names => (
-        is       => 'ro',
-        required => 1,
-    );
-
-    has _compact_row_datas => (
-        is      => 'ro',
-        lazy    => 1,
-        builder => '_compress',
-    );
-
-    has _subresult_cache => (
-        is      => 'ro',
-        default => sub {
-            my $self = shift;
-            return +{
-                map { $_ => undef } @{ $self->table_names },
-            };
-        },
-    );
+    sub _compact_row_datas {  $_[0]->{_compact_row_datas} //= $_[0]->_compress() }
 
     sub row_classes {
         my $self = shift;
@@ -57,10 +35,10 @@ package Aniki::Result::Collection::Joined {
 
     sub subresult {
         my ($self, $table_name) = @_;
-        return $self->_subresult_cache->{$table_name} if $self->_subresult_cache->{$table_name};
+        return $self->{_subresult_cache}->{$table_name} if $self->{_subresult_cache}->{$table_name};
 
         my $result_class = $self->handler->guess_result_class($table_name);
-        return $self->_subresult_cache->{$table_name} = $result_class->new(
+        return $self->{_subresult_cache}->{$table_name} = $result_class->new(
             table_name           => $table_name,
             handler              => $self->handler,
             row_datas            => [uniq_by { refaddr $_ } map { $_->{$table_name} } @{ $self->_compact_row_datas() }],

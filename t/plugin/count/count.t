@@ -6,12 +6,12 @@ use Test::More;
 
 use File::Spec;
 use lib File::Spec->catfile('t', 'lib');
-use Mouse::Util;
+use Role::Tiny;
 use Aniki::Plugin::Count;
 use t::Util;
 
 my $db = t::Util->db;
-Mouse::Util::apply_all_roles($db, 'Aniki::Plugin::Count');
+Role::Tiny->apply_roles_to_object($db, 'Aniki::Plugin::Count');
 
 $db->insert_multi(author => [map {
     +{ name => $_ }

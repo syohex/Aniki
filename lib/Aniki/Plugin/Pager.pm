@@ -1,8 +1,12 @@
 use 5.014002;
 
 package Aniki::Plugin::Pager {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse::Role;
+
+    use Role::Tiny;
     use Data::Page::NoTotalEntries;
     use Aniki::Result::Role::Pager;
 
@@ -40,8 +44,8 @@ package Aniki::Plugin::Pager {
             has_next             => $has_next,
             entries_on_this_page => $result->count,
         );
-        $result->meta->does_role('Aniki::Result::Role::Pager')
-            or Mouse::Util::apply_all_roles($result, 'Aniki::Result::Role::Pager');
+        Role::Tiny::does_role($result, 'Aniki::Result::Role::Pager')
+                or Role::Tiny->apply_roles_to_object($result, 'Aniki::Result::Role::Pager');
         $result->pager($pager);
 
         return $result;
@@ -62,8 +66,8 @@ Aniki::Plugin::Pager - SELECT with pager
 =head1 SYNOPSIS
 
     package MyDB;
-    use Mouse v2.4.5;
-    extends qw/Aniki/;
+    use parent qw/Aniki/;
+    use Role::Tiny::With;
     with qw/Aniki::Plugin::Pager/;
 
     package main;

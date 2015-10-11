@@ -1,8 +1,12 @@
 use 5.014002;
 
 package Aniki::Plugin::SelectJoined {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse::Role;
+
+    use Role::Tiny;
     use Aniki::QueryBuilder;
     use Aniki::Result::Collection::Joined;
     use Carp qw/croak/;
@@ -113,8 +117,8 @@ Aniki::Plugin::SelectJoined - Support for Joined query
 =head1 SYNOPSIS
 
     package MyDB;
-    use Mouse v2.4.5;
-    extends qw/Aniki/;
+    use parent qw/Aniki/;
+    use Role::Tiny::With;
     with qw/Aniki::Plugin::SelectJoined/;
 
     package main;

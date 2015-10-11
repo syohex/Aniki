@@ -1,12 +1,16 @@
 package Aniki::Result::Role::Pager;
-use namespace::sweep;
-use Mouse::Role;
-use Mouse::Util::TypeConstraints qw/duck_type/;
+use strict;
+use warnings;
+use utf8;
 
-has pager => (
-    is  => 'rw',
-    isa => duck_type(qw/entries_per_page current_page entries_on_this_page/),
-);
+use namespace::sweep;
+use Role::Tiny;
+
+sub pager {
+    my $self = shift;
+    return $self->{pager} = shift if @_;
+    return $self->{pager};
+}
 
 1;
 __END__

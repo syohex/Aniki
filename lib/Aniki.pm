@@ -1,15 +1,13 @@
 use 5.014002;
 package Aniki {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse v2.4.5;
-    use Module::Load ();
-    use Aniki::Row;
-    use Aniki::Result::Collection;
-    use Aniki::Schema;
-    use Aniki::QueryBuilder;
 
     our $VERSION = '0.04_03';
 
+    use Module::Load ();
     use SQL::Maker::SQLType qw/sql_type/;
     use DBIx::Handler;
     use Carp qw/croak/;
@@ -18,41 +16,37 @@ package Aniki {
     use String::CamelCase qw/camelize/;
     use SQL::NamedPlaceholder qw/bind_named/;
 
-    has connect_info => (
-        is       => 'ro',
-        isa      => 'ArrayRef',
-        required => 1,
+    use Aniki::Row;
+    use Aniki::Result::Collection;
+    use Aniki::Schema;
+    use Aniki::QueryBuilder;
+    use Package::Stash;
+
+    use Class::XSAccessor (
+        getters   => [qw/connect_info handler/],
+        accessors => [qw/fields_case suppress_row_objects/],
     );
 
-    has on_connect_do => (
-        is => 'ro',
-    );
+    sub new {
+        my ($class, %args) = @_;
+        exists $args{$_} or croak "$_ is required" for qw/connect_info/;
+        $args{fields_case}          //= 'NAME_lc';
+        $args{suppress_row_objects} //= 0;
+        $args{handler}              //= $class->_connect(\%args);
+        return bless \%args => $class;
+    }
 
-    has on_disconnect_do => (
-        is => 'ro',
-    );
+    sub _connect {
+        my ($class, $args) = @_;
+        my ($dsn, $user, $pass, $attr) = @{ $args->{connect_info} };
+        return DBIx::Handler->new($dsn, $user, $pass, $attr, {
+            on_connect_do    => delete $args->{on_connect_do},
+            on_disconnect_do => delete $args->{on_disconnect_do},
+        });
+    }
 
-    has handler => (
-        is      => 'ro',
-        default => sub {
-            my $self = shift;
-            my ($dsn, $user, $pass, $attr) = @{ $self->connect_info };
-            return DBIx::Handler->new($dsn, $user, $pass, $attr, {
-                on_connect_do    => $self->on_connect_do,
-                on_disconnect_do => $self->on_disconnect_do,
-            });
-        },
-    );
-
-    has fields_case => (
-        is      => 'rw',
-        default => sub { 'NAME_lc' },
-    );
-
-    has suppress_row_objects => (
-        is      => 'rw',
-        default => sub { 0 },
-    );
+    sub on_connect_do    { shift->handler->on_connect_do }
+    sub on_disconnect_do { shift->handler->on_disconnect_do }
 
     sub _database2driver {
         my ($class, $database) = @_;
@@ -77,13 +71,14 @@ package Aniki {
 
     sub setup {
         my ($class, %args) = @_;
+        my $meta = Package::Stash->new($class);
 
         # schema
         if (my $schema_class = $args{schema}) {
             Module::Load::load($schema_class);
 
             my $schema = Aniki::Schema->new(schema_class => $schema_class);
-            $class->meta->add_method(schema => sub { $schema });
+            $meta->add_symbol('&schema' => sub { $schema });
         }
         else {
             croak 'schema option is required.';
@@ -94,18 +89,19 @@ package Aniki {
             Module::Load::load($filter_class);
 
             my $filter = $filter_class->instance();
-            $class->meta->add_method(filter => sub { $filter });
+            $meta->add_symbol('&filter' => sub { $filter });
         }
         else {
             my $filter = Aniki::Filter->new;
-            $class->meta->add_method(filter => sub { $filter });
+            $meta->add_symbol('&filter' => sub { $filter });
         }
 
         # last_insert_id
         {
+            use Data::Dumper;
             my $driver = lc $class->_database2driver($class->schema->database);
             my $method = $class->can("_fetch_last_insert_id_from_$driver") or Carp::croak "Don't know how to get last insert id for $driver";
-            $class->meta->add_method(last_insert_id => $method);
+            $meta->add_symbol('&last_insert_id' => $method);
         }
 
         # query_builder
@@ -117,7 +113,7 @@ package Aniki {
             }
             my $driver        = $class->_database2driver($class->schema->database);
             my $query_builder = $query_builder_class->new(driver => $driver, strict => $class->use_strict_query_builder);
-            $class->meta->add_method(query_builder => sub { $query_builder });
+            $meta->add_symbol('&query_builder' => sub { $query_builder });
         }
 
         # row
@@ -127,7 +123,7 @@ package Aniki {
                 Module::Load::load($args{row});
                 $row_class = $args{row};
             }
-            $class->meta->add_method(row_class => sub { $row_class });
+            $meta->add_symbol('&row_class' => sub { $row_class });
         }
 
         # result
@@ -137,7 +133,7 @@ package Aniki {
                 Module::Load::load($args{result});
                 $result_class = $args{result};
             }
-            $class->meta->add_method(result_class => sub { $result_class });
+            $meta->add_symbol('&result_class' => sub { $result_class });
         }
     }
 
@@ -444,31 +440,13 @@ package Aniki {
         }
     }
 
-    has _row_class_cache => (
-        is      => 'rw',
-        default => sub {
-            my $self = shift;
-            my %cache = map { $_->name => undef } $self->schema->get_tables();
-            return \%cache;
-        },
-    );
-
-    has _result_class_cache => (
-        is      => 'rw',
-        default => sub {
-            my $self = shift;
-            my %cache = map { $_->name => undef } $self->schema->get_tables();
-            return \%cache;
-        },
-    );
-
     sub guess_row_class {
         my ($self, $table_name) = @_;
-        return $self->_row_class_cache->{$table_name} if defined $self->_row_class_cache->{$table_name};
-        return $self->_row_class_cache->{$table_name} = 'Aniki::Row' if $self->row_class eq 'Aniki::Row';
+        return $self->{_row_class_cache}->{$table_name} if defined $self->{_row_class_cache}->{$table_name};
+        return $self->{_row_class_cache}->{$table_name} = 'Aniki::Row' if $self->row_class eq 'Aniki::Row';
 
         my $row_class = sprintf '%s::%s', $self->row_class, camelize($table_name);
-        return $self->_row_class_cache->{$table_name} = try {
+        return $self->{_row_class_cache}->{$table_name} = try {
             Module::Load::load($row_class);
             return $row_class;
         } catch {
@@ -479,11 +457,11 @@ package Aniki {
 
     sub guess_result_class {
         my ($self, $table_name) = @_;
-        return $self->_result_class_cache->{$table_name} if defined $self->_result_class_cache->{$table_name};
-        return $self->_row_class_cache->{$table_name} = 'Aniki::Result::Collection' if $self->row_class eq 'Aniki::Result::Collection';
+        return $self->{_result_class_cache}->{$table_name} if defined $self->{_result_class_cache}->{$table_name};
+        return $self->{_result_class_cache}->{$table_name} = 'Aniki::Result::Collection' if $self->result_class eq 'Aniki::Result::Collection';
 
         my $result_class = sprintf '%s::%s', $self->result_class, camelize($table_name);
-        return $self->_result_class_cache->{$table_name} = try {
+        return $self->{_result_class_cache}->{$table_name} = try {
             Module::Load::load($result_class);
             return $result_class;
         } catch {
@@ -634,8 +612,7 @@ Aniki - The ORM as our great brother.
     };
 
     package MyProj::DB {
-        use Mouse v2.4.5;
-        extends qw/Aniki/;
+        use parent qw/Aniki/;
 
         __PACKAGE__->setup(
             schema => 'MyProj::DB::Schema',

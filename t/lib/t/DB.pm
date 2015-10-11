@@ -1,6 +1,9 @@
 package t::DB;
-use Mouse v2.4.5;
-extends qw/Aniki/;
+use strict;
+use warnings;
+use utf8;
+
+use parent qw/Aniki/;
 
 __PACKAGE__->setup(
     schema => 't::DB::Schema',

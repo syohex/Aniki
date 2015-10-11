@@ -1,60 +1,37 @@
 package Aniki::Row {
+    use strict;
+    use warnings;
+    use utf8;
     use namespace::sweep;
-    use Mouse v2.4.5;
+
     use Carp qw/croak/;
-    use Hash::Util qw/fieldhash/;
     use Scalar::Util qw/weaken/;
 
-    has table_name => (
-        is       => 'ro',
-        required => 1,
+    use Class::XSAccessor (
+        getters   => [qw/table_name row_data/],
+        accessors => [qw/is_new relay_data/]
     );
 
-    has row_data => (
-        is       => 'ro',
-        required => 1,
-    );
+    my %handler;
 
-    has is_new => (
-        is      => 'rw',
-        default => sub { 0 },
-    );
-
-    has relay_data => (
-        is      => 'ro',
-        default => sub { +{} },
-    );
-
-    has _accessor_method_cache => (
-        is      => 'ro',
-        default => sub { +{} },
-    );
-
-    fieldhash my %handler;
-
-    around new => sub {
-        my $orig = shift;
-        my ($class, %args) = @_;
-        my $handler = delete $args{handler};
-        my $self = $class->$orig(%args);
-        weaken $handler;
-        $handler{$self} = $handler;
+    sub new {
+        my $class = shift;
+        my $self = bless {
+            is_new                 => 0,
+            relay_data             => {},
+            _accessor_method_cache => {},
+            @_,
+        } => $class;
+        $handler{0+$self} = delete $self->{handler};
         return $self;
-    };
+    }
 
-    sub handler { $handler{+shift} }
+    sub handler { $handler{0+$_[0]} }
     sub schema  { shift->handler->schema }
     sub filter  { shift->handler->filter }
 
-    sub table {
-        my $self = shift;
-        return $self->handler->schema->get_table($self->table_name);
-    }
-
-    sub relationships {
-        my $self = shift;
-        return $self->handler->schema->get_relationships($self->table_name);
-    }
+    sub table { $_[0]->handler->schema->get_table($_[0]->table_name) }
+    sub relationships { $_[0]->handler->schema->get_relationships($_[0]->table_name) }
 
     sub get {
         my ($self, $column) = @_;
@@ -116,7 +93,7 @@ package Aniki::Row {
             my $self   = $invocant;
             my $column = $method;
 
-            my $cache = $self->_accessor_method_cache();
+            my $cache = $self->{_accessor_method_cache};
             return $cache->{$column} if exists $cache->{$column};
 
             weaken $self;
@@ -149,6 +126,11 @@ package Aniki::Row {
 
         my $msg = sprintf q{Can't locate object method "%s" via package "%s"}, $column, ref $invocant || $invocant;
         croak $msg;
+    }
+
+    sub DESTROY {
+        my $self = shift;
+        delete $handler{0+$self};
     }
 };
 
